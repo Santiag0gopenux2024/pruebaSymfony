@@ -3,51 +3,55 @@ require 'vendor/autoload.php';
 
 use MongoDB\Client;
 
+header('Content-Type: application/json');
+$response = ['success' => false, 'message' => ''];
+
 $client = new Client("mongodb://mongo:27017");
 $collection = $client->test->users;
 
 $id = $_GET['id'] ?? '';
+
+if (!$id || !preg_match('/^[a-f\d]{24}$/i', $id)) {
+    $response['message'] = 'ID inválido';
+    echo json_encode($response);
+    exit;
+}
+
 $user = $collection->findOne(['_id' => new MongoDB\BSON\ObjectId($id)]);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $name = filter_var($_POST['name']);
-    $email = filter_var($_POST['email']);
+    $data = json_decode(file_get_contents('php://input'), true);
 
-    try {
-        $updateResult = $collection->updateOne(
-            ['_id' => new MongoDB\BSON\ObjectId($id)],
-            ['$set' => ['name' => $name, 'email' => $email]]
-        );
-        header('Location: index.php');
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        $response['message'] = 'Error en el formato JSON enviado';
+        echo json_encode($response);
         exit;
-    } catch (Exception $e) {
-        echo "Error al actualizar el usuario: " . $e->getMessage();
     }
+
+    $name = isset($data['name']) ? filter_var($data['name']) : '';
+    $email = isset($data['email']) ? filter_var($data['email']) : '';
+
+    if (empty($name) || empty($email)) {
+        $response['message'] = 'El nombre y el email son obligatorios.';
+    } else {
+        try {
+            $updateResult = $collection->updateOne(
+                ['_id' => new MongoDB\BSON\ObjectId($id)],
+                ['$set' => ['name' => $name, 'email' => $email]]
+            );
+            $response['success'] = true;
+            $response['message'] = 'Usuario actualizado exitosamente.';
+        } catch (Exception $e) {
+            $response['message'] = 'Error al actualizar el usuario: ' . $e->getMessage();
+        }
+    }
+
+    echo json_encode($response);
+    exit;
 }
 
 if (!$user) {
-    echo "Usuario no encontrado";
+    $response['message'] = 'Usuario no encontrado';
+    echo json_encode($response);
     exit;
 }
-?>
-
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Actualizar usuario</title>
-    <link rel="stylesheet" href="css/styles.css">
-</head>
-<body>
-<h1>Actualizar usuario</h1>
-<form method="post">
-    <label for="name">Nombre:</label>
-    <input type="text" id="name" name="name" value="<?php echo htmlspecialchars($user['name']); ?>" required><br>
-    <label for="email">Email:</label>
-    <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($user['email']); ?>" required><br>
-    <input type="submit" value="Actualizar">
-</form>
-<a href="index.php">Volver</a>
-</body>
-</html>
