@@ -1,0 +1,8 @@
+#index:
+#    path: /
+#    controller: App\Controller\DefaultController::index
+
+## match /first
+first_page:
+    path: /first
+    controller: App\Controller\FirstController::index

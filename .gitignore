@@ -1,2 +1,1 @@
-docker/mongo-data/
-src/vendor/
+docker/postgres_data/

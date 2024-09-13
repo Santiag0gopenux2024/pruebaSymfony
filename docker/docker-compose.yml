@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+
+  webserver:
+    image: nginx:latest
+    ports:
+      - 80:80
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./../code/my_project_name:/var/www/html
+
+  php-fpm:
+    build: php
+    expose:
+      - 9000
+    volumes:
+      - ./../code/my_project_name:/var/www/html
+      - ./php/conf.d/xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+      - ./php/conf.d/error_reporting.ini:/usr/local/etc/php/conf.d/error_reporting.ini
+
+  postgresql:
+    image: postgres:12
+    environment:
+      POSTGRES_DB: ApiBooksDB
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
