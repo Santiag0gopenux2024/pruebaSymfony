@@ -1,0 +1,11 @@
+{# templates/book/show.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block body %}
+    <h1>{{ book.title }}</h1>
+    <p>Author: {{ book.author }}</p>
+    <p>Published At: {{ book.publishedAt|date('Y-m-d H:i') }}</p>
+
+    <a href="{{ path('book_edit', {'id': book.id}) }}">Edit</a>
+    <a href="{{ path('book_index') }}">Back to list</a>
+{% endblock %}

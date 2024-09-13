@@ -1,0 +1,22 @@
+{# templates/book/index.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block body %}
+    <h1>Book List</h1>
+
+    <a href="{{ path('book_new') }}">Create new Book</a>
+
+    <ul>
+        {% for book in books %}
+            <li>
+                {{ book.title }} by {{ book.author }}
+                <a href="{{ path('book_show', {'id': book.id}) }}">Show</a>
+                <a href="{{ path('book_edit', {'id': book.id}) }}">Edit</a>
+                <form method="post" action="{{ path('book_delete', {'id': book.id}) }}" style="display:inline;">
+                    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ book.id) }}">
+                    <button type="submit">Delete</button>
+                </form>
+            </li>
+        {% endfor %}
+    </ul>
+{% endblock %}
