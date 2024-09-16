@@ -3,9 +3,9 @@
 namespace App\Controller;
 
 use App\Entity\Book;
-use App\Form\BookType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
@@ -14,70 +14,95 @@ use Symfony\Component\Routing\Annotation\Route;
 class BookController extends AbstractController
 {
     #[Route('/', name: 'book_index', methods: ['GET'])]
-    public function index(EntityManagerInterface $entityManager): Response
+    public function index(EntityManagerInterface $entityManager): JsonResponse
     {
         $books = $entityManager->getRepository(Book::class)->findAll();
 
-        return $this->render('book/index.html.twig', [
-            'books' => $books,
-        ]);
-    }
-
-    #[Route('/new', name: 'book_new', methods: ['GET', 'POST'])]
-    public function new(Request $request, EntityManagerInterface $entityManager): Response
-    {
-        $book = new Book();
-        $form = $this->createForm(BookType::class, $book);
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            $entityManager->persist($book);
-            $entityManager->flush();
-
-            return $this->redirectToRoute('book_index', [], Response::HTTP_SEE_OTHER);
+        // Serializar los objetos a JSON
+        $booksArray = [];
+        foreach ($books as $book) {
+            $booksArray[] = [
+                'id' => $book->getId(),
+                'title' => $book->getTitle(),
+                'author' => $book->getAuthor(),
+                'publishedAt' => $book->getPublishedAt()->format('Y-m-d H:i:s')
+            ];
         }
 
-        return $this->render('book/new.html.twig', [
-            'book' => $book,
-            'form' => $form->createView(),
-        ]);
+        return new JsonResponse($booksArray);
+    }
+
+    #[Route('/new', name: 'book_new', methods: ['POST'])]
+    public function new(Request $request, EntityManagerInterface $entityManager): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+
+        if (!$data) {
+            return new JsonResponse(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $book = new Book();
+        $book->setTitle($data['title']);
+        $book->setAuthor($data['author']);
+        $book->setPublishedAt(new \DateTime($data['publishedAt']));
+
+        $entityManager->persist($book);
+        $entityManager->flush();
+
+        return new JsonResponse([
+            'message' => 'Book created successfully',
+            'book' => [
+                'id' => $book->getId(),
+                'title' => $book->getTitle(),
+                'author' => $book->getAuthor(),
+                'publishedAt' => $book->getPublishedAt()->format('Y-m-d H:i:s')
+            ]
+        ], Response::HTTP_CREATED);
     }
 
     #[Route('/{id}', name: 'book_show', methods: ['GET'])]
-    public function show(Book $book): Response
+    public function show(Book $book): JsonResponse
     {
-        return $this->render('book/show.html.twig', [
-            'book' => $book,
+        return new JsonResponse([
+            'id' => $book->getId(),
+            'title' => $book->getTitle(),
+            'author' => $book->getAuthor(),
+            'publishedAt' => $book->getPublishedAt()->format('Y-m-d H:i:s')
         ]);
     }
 
-    #[Route('/{id}/edit', name: 'book_edit', methods: ['GET', 'POST'])]
-    public function edit(Request $request, Book $book, EntityManagerInterface $entityManager): Response
+    #[Route('/{id}/edit', name: 'book_edit', methods: ['PUT'])]
+    public function edit(Request $request, Book $book, EntityManagerInterface $entityManager): JsonResponse
     {
-        $form = $this->createForm(BookType::class, $book);
-        $form->handleRequest($request);
+        $data = json_decode($request->getContent(), true);
 
-        if ($form->isSubmitted() && $form->isValid()) {
-            $entityManager->flush();
-
-            return $this->redirectToRoute('book_index', [], Response::HTTP_SEE_OTHER);
+        if (!$data) {
+            return new JsonResponse(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
         }
 
-        return $this->render('book/edit.html.twig', [
-            'book' => $book,
-            'form' => $form->createView(),
+        $book->setTitle($data['title']);
+        $book->setAuthor($data['author']);
+        $book->setPublishedAt(new \DateTime($data['publishedAt']));
+
+        $entityManager->flush();
+
+        return new JsonResponse([
+            'message' => 'Book updated successfully',
+            'book' => [
+                'id' => $book->getId(),
+                'title' => $book->getTitle(),
+                'author' => $book->getAuthor(),
+                'publishedAt' => $book->getPublishedAt()->format('Y-m-d H:i:s')
+            ]
         ]);
     }
 
-    #[Route('/{id}', name: 'book_delete', methods: ['POST'])]
-    public function delete(Request $request, Book $book, EntityManagerInterface $entityManager): Response
+    #[Route('/{id}', name: 'book_delete', methods: ['DELETE'])]
+    public function delete(Book $book, EntityManagerInterface $entityManager): JsonResponse
     {
-        if ($this->isCsrfTokenValid('delete'.$book->getId(), $request->request->get('_token'))) {
-            $entityManager->remove($book);
-            $entityManager->flush();
-        }
+        $entityManager->remove($book);
+        $entityManager->flush();
 
-        return $this->redirectToRoute('book_index', [], Response::HTTP_SEE_OTHER);
+        return new JsonResponse(['message' => 'Book deleted successfully']);
     }
 }
-
